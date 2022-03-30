@@ -124,7 +124,7 @@ jobs:
         shell: powershell.exe
     steps:
       - checkout
-      - run: choco upgrade golang --version=1.16.2
+      - run: choco upgrade golang --version=1.16.2 --allow-downgrade
       - run: choco install make
       - run: git config --system core.longpaths true
       - run: make test-windows

@@ -142,52 +142,6 @@ jobs:
     steps:
       - package:
           nightly: true
-  package-sign-windows:
-    executor:
-        name: win/default
-        shell: powershell.exe
-    steps:
-      - checkout
-      - attach_workspace:
-          at: '/build'
-      - run:
-          name: "Sign Windows Executables"
-          shell: powershell.exe
-          command: |
-            ./scripts/windows-signing.ps1
-      - persist_to_workspace:
-          root: './build'
-          paths:
-            - 'dist'
-      - store_artifacts:
-          path: './build/dist'
-          destination: 'build/dist'
-  package-sign-mac:
-    macos:
-      xcode: "11.3"
-    working_directory: /Users/distiller/project
-    environment:
-      FL_OUTPUT_DIR: output
-      FASTLANE_LANE: test
-    shell: /bin/bash --login -o pipefail
-    steps:
-      - checkout
-      - attach_workspace:
-          at: '.'
-      - run:
-          command: |
-            sh ./scripts/mac-signing.sh
-      - store_artifacts:
-          path: './dist'
-          destination: 'build/dist'
-  share-artifacts:
-    executor: aws-cli/default  
-    steps:
-      - run:
-          command: |
-            PR=${CIRCLE_PULL_REQUEST##*/}
-            printf -v payload '{ "pullRequestNumber": "%s" }' "$PR"
-            curl -X POST "https://182c7jdgog.execute-api.us-east-1.amazonaws.com/prod/shareArtifacts" --data "$payload"   
                       
 workflows:
   version: 2
@@ -237,13 +191,6 @@ workflows:
             - 'test-go-1_15-386'
             - 'test-go-1_16'
             - 'test-go-1_16-386'
-      - 'share-artifacts':
-          requires:
-            - 'package'
-          filters:
-            branches:
-              ignore:
-                - master
       - 'release':
           requires:
             - 'test-go-windows'
@@ -257,18 +204,6 @@ workflows:
               only: /.*/
             branches:
               ignore: /.*/
-      - 'package-sign-windows':
-          requires:
-            - 'release'
-          filters:
-              tags:
-                only: /.*/
-      - 'package-sign-mac':
-           requires:
-             - 'package-sign-windows' 
-           filters:
-              tags:
-                only: /.*/
   nightly:
     jobs:
       - 'deps'
@@ -286,14 +221,6 @@ workflows:
             - 'deps'
       - 'test-go-mac'
       - 'test-go-windows'
-      - 'nightly':
-          requires:
-            - 'test-go-windows'
-            - 'test-go-mac'
-            - 'test-go-1_15'
-            - 'test-go-1_15-386'
-            - 'test-go-1_16'
-            - 'test-go-1_16-386'
     triggers:
       - schedule:
           cron: "0 7 * * *"
